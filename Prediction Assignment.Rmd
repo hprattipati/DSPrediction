@@ -1,0 +1,119 @@
+---
+title: "Data Science - Prediction Assignment"
+author: "Himakar Prattipati"
+date: "September 30, 2018"
+output: html_document
+---
+## Background
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement - a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset).
+
+## Data
+
+The training data for this project are available here:
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
+
+The test data are available here:
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
+
+The data for this project come from this source: http://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/har. If you use the document you create for this class for any purpose please cite them as they have been very generous in allowing their data to be used for this kind of assignment.
+
+## Building the prediction model
+
+First, we will read the training and testing data
+
+```{r}
+trainingdata <- read.csv("pml-training.csv",na.strings=c("NA","#DIV/0!", ""))
+testingdata <- read.csv("pml-testing.csv",na.strings=c("NA","#DIV/0!", ""))
+
+dim(trainingdata)
+dim(testingdata)
+```
+
+We will cleanse the data by making all N/A's to zero
+
+```{r}
+trainingdata <- trainingdata[,colSums(is.na(trainingdata)) == 0]
+testingdata <- testingdata[,colSums(is.na(testingdata))==0]
+```
+
+Lets pick columns that are useful to the predictions
+
+```{r}
+trainingdata <- trainingdata[,-c(1:7)]
+testingdata <- testingdata[,-c(1:7)]
+
+dim(trainingdata)
+dim(testingdata)
+
+```
+
+Loading the required packages
+
+```{r}
+library(caret)
+library(randomForest)
+
+```
+
+## Cross Validation
+
+we will split the training data for cross validation in 75-25 ratio with 75% being the training sample and 25% being the testing sample
+
+Setting to seed to 12345 for reproducibility.
+
+```{r} 
+
+set.seed(12345)
+sample <- createDataPartition(trainingdata$classe,p=3/4, list=FALSE)
+trainsample <- trainingdata[sample,]
+testsample <- trainingdata[-sample,]
+```
+
+## Prediction Model 1 using rpart method
+
+Train the model on sample training set
+```{r}
+fmodel <- train(classe~.,trainsample, method="rpart")
+print(fmodel)
+```
+
+Cross validate the model on sample test set and find the accuracy
+```{r}
+fprediction <- predict(fmodel,testsample, type="raw")
+confusionMatrix(fprediction, testsample$classe)
+```
+
+## Prediction Model 2 using RandomForest method
+
+Train the model on sample training set
+```{r}
+smodel <- randomForest(classe~.,trainsample, method="class")
+print(smodel)
+```
+
+Cross validate the model on sample test set and finding the accuracy
+```{r}
+sprediction <- predict(smodel, testsample, type="class")
+confusionMatrix(sprediction,testsample$classe)
+```
+
+Below are the accuries with the models.
+
+1.rpart method accuracy - 54%  
+2.randomforest method accuracy - 99.43%
+
+Sample error with randomforest is 0.57%
+
+From the above results, prediction from randomforest method is best to use for predictions on testing set.
+
+## Applying the prediction model to the actual test set
+
+Apply the randomforest prediction model to test data
+```{r}
+testset_prediction <- predict(smodel,testingdata)
+testset_prediction
+
+```
